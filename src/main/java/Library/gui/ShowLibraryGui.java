@@ -1,11 +1,13 @@
 package Library.gui;
 
 import Library.entity.Book;
+import Library.entity.Genre;
 import Library.entity.State;
 import Library.repo.LibraryRepository;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -15,7 +17,9 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+import javax.swing.*;
 import java.util.List;
 
 @AllArgsConstructor
@@ -34,64 +38,37 @@ public class ShowLibraryGui extends VerticalLayout {
         Text textBooks = new Text("Zawartość biblioteki");
 
         List<Book> bookList = libraryRepository.findAll();
-        List<Book> borrowedBooksList = libraryRepository.findAllByState(State.Wypożyczona);
-        List<Book> availableBooksList = libraryRepository.findAllByState(State.Na_stanie);
-        Grid<Book> library = new Grid<>(Book.class);
-        Grid<Book> borrowed = new Grid<>(Book.class);
-        Grid<Book> available = new Grid<>(Book.class);
-        library.setItems(bookList);
-        library.removeAllColumns();
-        borrowed.setItems(borrowedBooksList);
-        borrowed.removeAllColumns();
-        borrowed.setVisible(false);
-        available.setItems(availableBooksList);
-        available.removeAllColumns();
-        available.setVisible(false);
+        List<Book> borrowedBooksList = libraryRepository.findAllByState(State.WYPOZYCZONA);
+        List<Book> availableBooksList = libraryRepository.findAllByState(State.NA_STANIE);
+        Grid<Book> libraryGrid = new Grid<>(Book.class);
+        libraryGrid.setItems(bookList);
+        libraryGrid.removeAllColumns();
 
-        library.addColumn(Book::getId).setHeader("#").setSortable(true);
-        library.addColumn(Book::getTitle).setHeader("Tytuł").setSortable(true);
-        library.addColumn(Book::getAuthor).setHeader("Autor").setSortable(true);
-        library.addColumn(Book::getSeries).setHeader("Seria").setSortable(true);
-        library.addColumn(Book::getGenre).setHeader("Gatunek").setSortable(true);
-        library.addColumn(Book::getState).setHeader("Stan").setSortable(true);
+        libraryGrid.addColumn(Book::getId).setHeader("#").setSortable(true);
+        libraryGrid.addColumn(Book::getTitle).setHeader("Tytuł").setSortable(true);
+        libraryGrid.addColumn(Book::getAuthor).setHeader("Autor").setSortable(true);
+        libraryGrid.addColumn(Book::getSeries).setHeader("Seria").setSortable(true);
+        libraryGrid.addColumn(Book::getGenre).setHeader("Gatunek").setSortable(true);
+        libraryGrid.addColumn(Book::getState).setHeader("Stan").setSortable(true).setKey("State");
 
-        library.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
-
-        borrowed.addColumn(Book::getId).setHeader("#").setSortable(true);
-        borrowed.addColumn(Book::getTitle).setHeader("Tytuł").setSortable(true);
-        borrowed.addColumn(Book::getAuthor).setHeader("Autor").setSortable(true);
-        borrowed.addColumn(Book::getSeries).setHeader("Seria").setSortable(true);
-        borrowed.addColumn(Book::getGenre).setHeader("Gatunek").setSortable(true);
-
-        borrowed.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
-
-        available.addColumn(Book::getId).setHeader("#").setSortable(true);
-        available.addColumn(Book::getTitle).setHeader("Tytuł").setSortable(true);
-        available.addColumn(Book::getAuthor).setHeader("Autor").setSortable(true);
-        available.addColumn(Book::getSeries).setHeader("Seria").setSortable(true);
-        available.addColumn(Book::getGenre).setHeader("Gatunek").setSortable(true);
-
-        available.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
+        libraryGrid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
 
         Button buttonShowAll = new Button("Pokaż wszystkie książki");
         buttonShowAll.addClickListener(ClickEvent -> {
-            library.setVisible(true);
-            borrowed.setVisible(false);
-            available.setVisible(false);
+            libraryGrid.getColumnByKey("State").setVisible(true);
+            libraryGrid.setItems(bookList);
         });
 
         Button buttonShowBorrowed = new Button("Pokaż tylko wypożyczone");
         buttonShowBorrowed.addClickListener(ClickEvent -> {
-            library.setVisible(false);
-            borrowed.setVisible(true);
-            available.setVisible(false);
+            libraryGrid.getColumnByKey("State").setVisible(false);
+            libraryGrid.setItems(borrowedBooksList);
         });
 
         Button buttonShowAvailable = new Button("Pokaż tylko dostępne");
         buttonShowAvailable.addClickListener(ClickEvent -> {
-            library.setVisible(false);
-            borrowed.setVisible(false);
-            available.setVisible(true);
+            libraryGrid.getColumnByKey("State").setVisible(false);
+            libraryGrid.setItems(availableBooksList);
         });
 
         Dialog dialogDeletedBook = new Dialog();
@@ -114,10 +91,36 @@ public class ShowLibraryGui extends VerticalLayout {
             dialogDeletedBook.open();
         });
 
-        add(buttonMainMenu, textBooks, library, available, borrowed, buttonShowAll, buttonShowAvailable, buttonShowBorrowed, buttonShowAvailable, textFieldDeleteBook, buttonDeleteWorker, dialogDeletedBook);
+        add(buttonMainMenu, textBooks, libraryGrid, buttonShowAll, buttonShowAvailable, buttonShowBorrowed, buttonShowAvailable);
+        changeState();
+        add(textFieldDeleteBook, buttonDeleteWorker, dialogDeletedBook);
     }
 
-    public void deleteBook(String id){
+    private void changeState(){
+        TextField textFieldChangeState = new TextField("Wpisz ID książki, której status chcesz zmienić");
+        textFieldChangeState.setWidth("400px");
+
+        ComboBox<State> stateComboBox = new ComboBox<>("Wybierz status, który chcesz ustawić");
+        stateComboBox.setItems(State.NA_STANIE, State.WYPOZYCZONA, State.INNY);
+
+        Button buttonChangeState = new Button("Zmień status!");
+        buttonChangeState.addClickListener(ClickEvent -> {
+            updateState(Long.valueOf(textFieldChangeState.getValue()), stateComboBox.getValue());
+            textFieldChangeState.clear();
+            stateComboBox.clear();
+            UI.getCurrent().getPage().reload();
+        });
+        add(textFieldChangeState, stateComboBox, buttonChangeState);
+    }
+
+    @Transactional
+    private void updateState(Long id, State state) {
+        Book book = libraryRepository.getById(id);
+        book.setState(state);
+        libraryRepository.save(book);
+    }
+
+    private void deleteBook(String id){
         libraryRepository.deleteById(Long.parseLong(id));
     }
 }

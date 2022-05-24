@@ -31,10 +31,10 @@ public class LibraryApi {
         return books.save(book);
     }
 
-//    @PutMapping
-//    public Book updateBook(@RequestParam Long index) {
-//        return books.save(book);
-//    }
+    @PutMapping
+    public Book updateBook(@RequestParam Long index, Book book) {
+        return books.save(book);
+    }
 
     @DeleteMapping
     public void deleteBook(@RequestParam Long index) {

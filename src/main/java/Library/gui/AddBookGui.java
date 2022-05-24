@@ -44,7 +44,7 @@ public class AddBookGui extends VerticalLayout {
 
         comboBoxGenre.setItems(Genre.Fantastyka, Genre.Romans, Genre.Inny);
         comboBoxGenre.setLabel("Wybierz gatunek książki");
-        comboBoxState.setItems(State.Na_stanie, State.Wypożyczona, State.Inny);
+        comboBoxState.setItems(State.NA_STANIE, State.WYPOZYCZONA, State.INNY);
         comboBoxState.setLabel("Wybierz stan książki");
 
         Button buttonMainMenu = new Button("Powrót do menu głównego");
